@@ -1,0 +1,6 @@
+@ContractPulseAI.API_HostAddress = http://localhost:5243
+
+GET {{ContractPulseAI.API_HostAddress}}/api/rfp
+Accept: application/json
+
+###
