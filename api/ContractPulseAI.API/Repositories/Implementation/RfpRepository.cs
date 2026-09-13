@@ -32,5 +32,19 @@ namespace ContractPulseAI.API.Repositories.Implementation
 
             return rfp;
         }
+
+        /// <summary>
+        /// Updates an existing RFP entity tracking node and persists the state change to Azure SQL.
+        /// </summary>
+        public async Task<ClientRFP> UpdateAsync(ClientRFP rfp)
+        {
+            // Attaches or updates the structural entry context properties locally
+            _dbContext.ClientRFPs.Update(rfp);
+
+            // Asynchronously pushes tracking metrics and changes out to the relational SQL layer
+            await _dbContext.SaveChangesAsync();
+
+            return rfp;
+        }
     }
 }

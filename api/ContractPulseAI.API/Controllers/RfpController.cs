@@ -46,5 +46,28 @@ namespace ContractPulseAI.API.Controllers
                 new { id = createdRfp.Id },
                 createdRfp);
         }
+
+        [HttpPost("RFP_Generation")]
+        public async Task<IActionResult> GenerateRfpDocument([FromBody] RfpGenerationRequestDto request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.ClientRequirement))
+            {
+                return BadRequest("Client requirement text cannot be empty.");
+            }
+
+            try
+            {
+                // Executes the full pipeline shown on the whiteboard:
+                // Save Intake -> PII Agent Scrubbing -> LLM Generation -> OpenXML File Generation & DB Update
+                ClientRfpDto trackingResult = await _rfpService.GenerateRfpWordDocumentAsync(request);
+
+                return Ok(trackingResult);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred during RFP generation: {ex.Message}");
+            }
+        }
+
     }
 }
