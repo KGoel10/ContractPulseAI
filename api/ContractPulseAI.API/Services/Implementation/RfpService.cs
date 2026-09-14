@@ -141,6 +141,8 @@ namespace ContractPulseAI.API.Services.Implementation
             rfpEntity.RFP_Status = "Generated";
             rfpEntity.LastUpdatedDate = DateTime.UtcNow;
 
+            rfpEntity.RFP_Prompt = finalizedTextContent; // Optionally store the generated content for reference
+
             await _repository.UpdateAsync(rfpEntity);
 
             return new ClientRfpDto
