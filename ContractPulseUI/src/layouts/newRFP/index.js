@@ -45,7 +45,7 @@ function newRFP() {
         throw new Error("The RFP was generated, but no RFP ID was returned.");
       }
 
-      localStorage.setItem("rfpPrompt", result?.rfp || result?.generatedPrompt || formValues.clientRequirement);
+      localStorage.setItem("rfpPrompt", result?.rfpPrompt || result?.generatedPrompt || formValues.clientRequirement);
       localStorage.setItem("rfpResponse", JSON.stringify(result));
       setSuccess("RFP generated successfully.");
       history.push(`/rfp/${rfpId}`);

@@ -31,7 +31,7 @@ function RFP() {
 
       try {
         const rfp = await api.get(`/api/Rfp/${id}`);
-        const rfpPrompt = rfp?.rfp_prompt;
+        const rfpPrompt = rfp?.rfpPrompt || rfp?.rfp_prompt || "";
 
         if (!rfpPrompt) {
           throw new Error("RFP prompt was not returned by the server.");
@@ -53,7 +53,7 @@ function RFP() {
     fetchRfp();
   }, [id]);
 
-  const handlNext = () => {
+  const handleNext = () => {
     history.push(`/sow/${id}`);
   };
 

@@ -1,8 +1,9 @@
 
 import { useState } from "react";
 import DownloadIcon from "@mui/icons-material/Download";
-import { Button, Grid, TextField, Typography } from "@mui/material";
+import { Alert, Button, Grid, Link, TextField, Typography } from "@mui/material";
 import { useParams } from "react-router-dom";
+import api from "services/axios";
 
 // Vision UI Dashboard React components
 import VuiBox from "components/VuiBox";
@@ -77,6 +78,10 @@ function SOW() {
     duration: "",
     resource: "",
   });
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [sowLink, setSowLink] = useState("");
   const details = localStorage.getItem("rfpPrompt") || "No details available.";
 
   const handleChange = (field) => (event) => {
@@ -84,6 +89,51 @@ function SOW() {
       ...currentValues,
       [field]: event.target.value,
     }));
+    setError("");
+    setSuccess("");
+  };
+
+  const handleGenerateSow = async () => {
+    const rfpId = Number(id);
+
+    if (!Number.isInteger(rfpId) || rfpId <= 0) {
+      setError("A valid RFP ID is required to generate SOW.");
+      return;
+    }
+
+    setIsGenerating(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const additionalPrompt = [
+        `Budget: ${formValues.budget || "Not provided"}`,
+        `Duration: ${formValues.duration || "Not provided"}`,
+        `Resource: ${formValues.resource || "Not provided"}`,
+        details,
+      ].join("\n");
+
+      const response = await api.post("/api/Sow/SOW_Generation", {
+        rfpId,
+        additionalPrompt,
+      });
+
+      localStorage.setItem("rfpResponse", JSON.stringify(response));
+      if (response?.sowLink) {
+        setSowLink(response.sowLink);
+      }
+
+      setSuccess("SOW generated successfully.");
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+          requestError.response?.data ||
+          requestError.message ||
+          "Unable to generate SOW. Please try again."
+      );
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleDownload = () => {
@@ -243,6 +293,23 @@ ET`;
                 <Button
                   size="small"
                   variant="contained"
+                  color="success"
+                  onClick={handleGenerateSow}
+                  disabled={isGenerating}
+                  sx={{
+                    px: 2.5,
+                    mr: 1,
+                    color: "#0b0a0a",
+                    "&.Mui-disabled": {
+                      color: "rgba(255, 255, 255, 0.6)",
+                    },
+                  }}
+                >
+                  {isGenerating ? "Generating..." : "Generate SOW"}
+                </Button>
+                <Button
+                  size="small"
+                  variant="contained"
                   color="info"
                   onClick={handleDownload}
                   startIcon={<DownloadIcon />}
@@ -257,6 +324,13 @@ ET`;
                   Download
                 </Button>
               </VuiBox>
+              {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
+              {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+              {sowLink && (
+                <Typography variant="body2" sx={{ mt: 1, color: "#b9d9fa" }}>
+                  Generated document: <Link href={sowLink} target="_blank" rel="noreferrer">Open SOW link</Link>
+                </Typography>
+              )}
             </Grid>
           </Grid>
         </VuiBox>
