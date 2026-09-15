@@ -101,7 +101,7 @@ const navbarContainer = ({ breakpoints }) => ({
   },
 });
 
-const navbarRow = ({ breakpoints, palette: { white } }, { isMini }) => ({
+const navbarRow = ({ breakpoints, palette: { white } }) => ({
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
@@ -132,8 +132,8 @@ const navbarRow = ({ breakpoints, palette: { white } }, { isMini }) => ({
   },
 
   [breakpoints.up("md")]: {
-    justifyContent: isMini ? "space-between" : "stretch",
-    width: isMini ? "100%" : "max-content",
+    justifyContent: "stretch",
+    width: "max-content",
   },
 
   [breakpoints.up("xl")]: {

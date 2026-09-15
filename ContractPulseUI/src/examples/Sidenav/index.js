@@ -16,7 +16,7 @@
 
 */
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 // react-router-dom components
 import { useLocation, NavLink } from "react-router-dom";
@@ -28,7 +28,6 @@ import PropTypes from "prop-types";
 import List from "@mui/material/List";
 import Divider from "@mui/material/Divider";
 import Link from "@mui/material/Link";
-import Icon from "@mui/material/Icon";
 
 // Vision UI Dashboard React components
 import VuiBox from "components/VuiBox";
@@ -56,20 +55,6 @@ function Sidenav({ color, brandName, routes, ...rest }) {
   const location = useLocation();
   const { pathname } = location;
   const collapseName = pathname.split("/").slice(1)[0];
-  const sidenavRef = useRef(null);
-
-  const closeSidenav = () => setMiniSidenav(dispatch, true);
-
-  useEffect(() => {
-    const handleOutsideClick = (event) => {
-      if (!miniSidenav && sidenavRef.current && !sidenavRef.current.contains(event.target)) {
-        closeSidenav();
-      }
-    };
-
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, [miniSidenav, dispatch]);
 
   useEffect(() => {
     const handleMiniSidenav = () => setMiniSidenav(dispatch, window.innerWidth < 1200);
@@ -78,7 +63,7 @@ function Sidenav({ color, brandName, routes, ...rest }) {
     handleMiniSidenav();
 
     return () => window.removeEventListener("resize", handleMiniSidenav);
-  }, [dispatch, location]);
+  }, [dispatch]);
   useEffect(() => {
     if (window.innerWidth < 1440) {
       setTransparentSidenav(dispatch, false);
@@ -145,8 +130,12 @@ function Sidenav({ color, brandName, routes, ...rest }) {
   return (
     <SidenavRoot
       {...rest}
-      ref={sidenavRef}
       variant="permanent"
+      onClick={() => {
+        if (miniSidenav) {
+          setMiniSidenav(dispatch, false);
+        }
+      }}
       ownerState={{ transparentSidenav, miniSidenav }}
     >
       <VuiBox
@@ -158,19 +147,6 @@ function Sidenav({ color, brandName, routes, ...rest }) {
           overflow: "unset !important",
         }}
       >
-        <VuiBox
-          display={{ xs: "block", xl: "none" }}
-          position="absolute"
-          top={0}
-          right={0}
-          p={1.625}
-          onClick={closeSidenav}
-          sx={{ cursor: "pointer" }}
-        >
-          <VuiTypography variant="h6" color="text">
-            <Icon sx={{ fontWeight: "bold" }}>close</Icon>
-          </VuiTypography>
-        </VuiBox>
         <VuiBox component={NavLink} to="/" display="flex" alignItems="center">
           <VuiBox
             sx={
