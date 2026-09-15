@@ -17,57 +17,146 @@
 */
 
 // @mui material components
-import Grid from "@mui/material/Grid";
-import Icon from "@mui/material/Icon";
-import { Card, LinearProgress, Stack } from "@mui/material";
+import { useEffect, useState } from "react";
+import { useHistory } from "react-router-dom";
+import {
+  Alert,
+  Card,
+  CircularProgress,
+  IconButton,
+  Link,
+  Stack,
+  Tooltip,
+} from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import api from "services/axios";
 
 // Vision UI Dashboard React components
 import VuiBox from "components/VuiBox";
 import VuiTypography from "components/VuiTypography";
-import VuiProgress from "components/VuiProgress";
 
 // Vision UI Dashboard React example components
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import DashboardNavbar from "examples/Navbars/DashboardNavbar";
 import Footer from "examples/Footer";
-import MiniStatisticsCard from "examples/Cards/StatisticsCards/MiniStatisticsCard";
-import linearGradient from "assets/theme/functions/linearGradient";
+import Table from "examples/Tables/Table";
 
-// Vision UI Dashboard React base styles
-import typography from "assets/theme/base/typography";
+
 import colors from "assets/theme/base/colors";
 
-// Dashboard layout components
-import WelcomeMark from "layouts/dashboard/components/WelcomeMark";
-import Projects from "layouts/dashboard/components/Projects";
-import OrderOverview from "layouts/dashboard/components/OrderOverview";
-import SatisfactionRate from "layouts/dashboard/components/SatisfactionRate";
-import ReferralTracking from "layouts/dashboard/components/ReferralTracking";
-
-// React icons
-import { IoIosRocket } from "react-icons/io";
-import { IoGlobe } from "react-icons/io5";
-import { IoBuild } from "react-icons/io5";
-import { IoWallet } from "react-icons/io5";
-import { IoDocumentText } from "react-icons/io5";
-import { FaShoppingCart } from "react-icons/fa";
-
-// Data
-import LineChart from "examples/Charts/LineCharts/LineChart";
-import BarChart from "examples/Charts/BarCharts/BarChart";
-import { lineChartDataDashboard } from "layouts/dashboard/data/lineChartData";
-import { lineChartOptionsDashboard } from "layouts/dashboard/data/lineChartOptions";
-import { barChartDataDashboard } from "layouts/dashboard/data/barChartData";
-import { barChartOptionsDashboard } from "layouts/dashboard/data/barChartOptions";
 
 function Dashboard() {
-  const { gradients } = colors;
-  const { cardContent } = gradients;
+  const history = useHistory();
+  const [rfps, setRfps] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const loadRfps = async () => {
+      try {
+        const result = await api.get("/api/Rfp");
+        setRfps(Array.isArray(result) ? result : []);
+      } catch (requestError) {
+        setError(
+          requestError.response?.data?.message ||
+            requestError.message ||
+            "Unable to load RFPs."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadRfps();
+  }, []);
+
+  const tableColumns = [
+    { name: "id", align: "left", width: "8%" },
+    { name: "client", align: "left", width: "20%" },
+    { name: "email", align: "left", width: "24%" },
+    { name: "status", align: "left", width: "17%" },
+    { name: "sow", align: "left", width: "18%" },
+    { name: "actions", align: "right", width: "13%" },
+  ];
+
+  const tableRows = rfps.map((rfp) => ({
+    id: rfp.id,
+    client: rfp.clientName,
+    email: rfp.clientEmail,
+    status: (
+      <VuiTypography
+        variant="button"
+        color={rfp.rfpStatus === "SOW_Generated" ? "success" : "text"}
+        fontWeight="medium"
+      >
+        {rfp.rfpStatus || "Pending"}
+      </VuiTypography>
+    ),
+    sow: rfp.sowLink ? (
+      <Link
+        href={rfp.sowLink}
+        target="_blank"
+        rel="noreferrer"
+        sx={{ color: "#66b3ff", fontSize: "0.75rem", fontWeight: 500 }}
+      >
+        Open SOW
+      </Link>
+    ) : (
+      <VuiTypography variant="button" color="text">
+        Not generated
+      </VuiTypography>
+    ),
+    actions: (
+      <VuiBox display="flex" justifyContent="flex-end" alignItems="center">
+        <Tooltip title="Edit RFP">
+          <IconButton
+            aria-label={`Edit RFP ${rfp.id}`}
+            onClick={() => history.push(`/rfp/${rfp.id}`)}
+            sx={{ color: "#66b3ff" }}
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Open SOW">
+          <IconButton
+            aria-label={`Open SOW ${rfp.id}`}
+            onClick={() => history.push(`/sow/${rfp.id}`)}
+            sx={{ color: "#66b3ff" }}
+          >
+            <OpenInNewIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </VuiBox>
+    ),
+  }));
 
   return (
     <DashboardLayout>
       <DashboardNavbar />
       <VuiBox py={3}>
+        <Card sx={{ overflow: "hidden" }}>
+          <VuiBox p={{ xs: 2, md: 3 }}>
+            <VuiTypography variant="lg" color="white" fontWeight="bold" mb={0.5}>
+              Client RFPs
+            </VuiTypography>
+            <VuiTypography variant="button" color="text" fontWeight="regular" mb={2}>
+              Track generated proposals and statements of work.
+            </VuiTypography>
+            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+            {isLoading ? (
+              <VuiBox display="flex" justifyContent="center" py={4}>
+                <CircularProgress color="info" size={28} />
+              </VuiBox>
+            ) : rfps.length === 0 ? (
+              <VuiTypography variant="button" color="text" py={3}>
+                No RFPs found.
+              </VuiTypography>
+            ) : (
+              <Table columns={tableColumns} rows={tableRows} />
+            )}
+          </VuiBox>
+        </Card>
         {/* <VuiBox mb={3}>
           <Grid container spacing={3}>
             <Grid item xs={12} md={6} xl={3}>
