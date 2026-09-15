@@ -68,7 +68,7 @@ function reducer(state, action) {
 // Vision UI Dashboard React context provider
 function VisionUIControllerProvider({ children }) {
   const initialState = {
-    miniSidenav: false,
+    miniSidenav: true,
     transparentSidenav: true,
     sidenavColor: "info",
     transparentNavbar: true,

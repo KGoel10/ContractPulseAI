@@ -25,28 +25,13 @@ import createCache from "@emotion/cache";
 import routes from "routes";
 
 // Vision UI Dashboard React contexts
-import { useVisionUIController, setMiniSidenav } from "context";
+import { useVisionUIController } from "context";
 
 export default function App() {
-  const [controller, dispatch] = useVisionUIController();
-  const { miniSidenav, direction, layout, sidenavColor } = controller;
-  const [onMouseEnter, setOnMouseEnter] = useState(false);
+  const [controller] = useVisionUIController();
+  const { direction, layout, sidenavColor } = controller;
   const [rtlCache, setRtlCache] = useState(null);
   const { pathname } = useLocation();
-
-  const handleOnMouseEnter = () => {
-    if (miniSidenav && !onMouseEnter) {
-      setMiniSidenav(dispatch, false);
-      setOnMouseEnter(true);
-    }
-  };
-
-  const handleOnMouseLeave = () => {
-    if (onMouseEnter) {
-      setMiniSidenav(dispatch, true);
-      setOnMouseEnter(false);
-    }
-  };
 
   // Cache for the rtl
   useMemo(() => {
@@ -93,8 +78,6 @@ export default function App() {
               brand=""
               brandName="CONTRACTPULSE AI"
               routes={routes}
-              onMouseEnter={handleOnMouseEnter}
-              onMouseLeave={handleOnMouseLeave}
             />
             <Configurator />
           </>
@@ -116,8 +99,6 @@ export default function App() {
             brand=""
             brandName="CONTRACTPULSE AI"
             routes={routes}
-            onMouseEnter={handleOnMouseEnter}
-            onMouseLeave={handleOnMouseLeave}
           />
           <Configurator />
         </>

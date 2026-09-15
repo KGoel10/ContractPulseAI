@@ -27,7 +27,6 @@ import PropTypes from "prop-types";
 // @material-ui core components
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
-import IconButton from "@mui/material/IconButton";
 import Icon from "@mui/material/Icon";
 
 // Vision UI Dashboard React components
@@ -38,20 +37,18 @@ import {
   navbar,
   navbarContainer,
   navbarRow,
-  navbarMobileMenu,
 } from "examples/Navbars/DashboardNavbar/styles";
 
 // Vision UI Dashboard React context
 import {
   useVisionUIController,
   setTransparentNavbar,
-  setMiniSidenav,
 } from "context";
 
-function DashboardNavbar({ absolute, light, isMini }) {
+function DashboardNavbar({ absolute, light }) {
   const [navbarType, setNavbarType] = useState();
   const [controller, dispatch] = useVisionUIController();
-  const { miniSidenav, transparentNavbar, fixedNavbar } = controller;
+  const { transparentNavbar, fixedNavbar } = controller;
 
   useEffect(() => {
     // Setting the navbar type
@@ -79,8 +76,6 @@ function DashboardNavbar({ absolute, light, isMini }) {
     return () => window.removeEventListener("scroll", handleTransparentNavbar);
   }, [dispatch, fixedNavbar]);
 
-  const handleMiniSidenav = () => setMiniSidenav(dispatch, !miniSidenav);
-
   return (
     <AppBar
       position={absolute ? "absolute" : navbarType}
@@ -88,26 +83,11 @@ function DashboardNavbar({ absolute, light, isMini }) {
       sx={(theme) => navbar(theme, { transparentNavbar, absolute, light })}
     >
       <Toolbar sx={(theme) => navbarContainer(theme)}>
-        <VuiBox color="inherit" mb={{ xs: 1, md: 0 }} sx={(theme) => navbarRow(theme, { isMini })}>
+        <VuiBox color="inherit" mb={{ xs: 1, md: 0 }} sx={(theme) => navbarRow(theme)}>
           <Link to="/" aria-label="Home" style={{ color: "inherit", lineHeight: 0 }}>
             <Icon sx={{ opacity: light ? 0.85 : 0.55 }}>home</Icon>
           </Link>
         </VuiBox>
-        {isMini ? null : (
-          <VuiBox sx={(theme) => navbarRow(theme, { isMini })}>
-            <IconButton
-              size="small"
-              color="inherit"
-              sx={navbarMobileMenu}
-              onClick={handleMiniSidenav}
-              aria-label={miniSidenav ? "Open navigation" : "Close navigation"}
-            >
-              <Icon className={light ? "text-white" : "text-dark"}>
-                {miniSidenav ? "menu_open" : "menu"}
-              </Icon>
-            </IconButton>
-          </VuiBox>
-        )}
       </Toolbar>
     </AppBar>
   );
@@ -117,14 +97,12 @@ function DashboardNavbar({ absolute, light, isMini }) {
 DashboardNavbar.defaultProps = {
   absolute: false,
   light: false,
-  isMini: false,
 };
 
 // Typechecking props for the DashboardNavbar
 DashboardNavbar.propTypes = {
   absolute: PropTypes.bool,
   light: PropTypes.bool,
-  isMini: PropTypes.bool,
 };
 
 export default DashboardNavbar;
