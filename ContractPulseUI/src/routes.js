@@ -41,7 +41,7 @@ const routes = [
     type: "collapse",
     name: "SOW",
     key: "sow",
-    route: "/sow",
+    route: "/sow/:id",
     icon: <Restore size="15px" color="inherit" />,
     component: SOW,
     noCollapse: true,

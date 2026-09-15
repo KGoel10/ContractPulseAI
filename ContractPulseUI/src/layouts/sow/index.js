@@ -2,6 +2,7 @@
 import { useState } from "react";
 import DownloadIcon from "@mui/icons-material/Download";
 import { Button, Grid, TextField, Typography } from "@mui/material";
+import { useParams } from "react-router-dom";
 
 // Vision UI Dashboard React components
 import VuiBox from "components/VuiBox";
@@ -70,6 +71,7 @@ const inputSx = {
 };
 
 function SOW() {
+  const { id } = useParams();
   const [formValues, setFormValues] = useState({
     budget: "",
     duration: "",
@@ -157,7 +159,7 @@ ET`;
       <VuiBox mt={4}>
         <VuiBox my={3}>
           <Grid container spacing={3}>
-            <Grid item xs={12}>
+            <Grid item xs={12} data-rfp-id={id}>
               <Typography
                 variant="h5"
                 sx={{ color: "#d8eaff", fontSize: "1.35rem", fontWeight: 500 }}

@@ -54,7 +54,7 @@ function RFP() {
   }, [id]);
 
   const handlNext = () => {
-    history.push("/sow");
+    history.push(`/sow/${id}`);
   };
 
   const handleSave = () => {
