@@ -76,28 +76,7 @@ function newRFP() {
               </Typography>
               <Typography variant="body2" sx={{ color: "rgba(181, 211, 244, 0.78)", fontSize: "0.85rem" }} mb={2}>
                 Describe what you need and generate a RFP.
-              </Typography>
-              <Grid container spacing={2} mb={2}>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Client name"
-                    value={formValues.clientName}
-                    onChange={handleChange("clientName")}
-                  />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Client email"
-                    type="email"
-                    value={formValues.clientEmail}
-                    onChange={handleChange("clientEmail")}
-                  />
-                </Grid>
-              </Grid>
+              </Typography>              
               <TextField
                 fullWidth
                 multiline
