@@ -1,6 +1,6 @@
-﻿using System.IO;
-using System.Text;
-using System.ClientModel; // Required for ApiKeyCredential / AzureOpenAIClient config in newer OpenAI SDK specs
+﻿using Azure;
+using Azure.AI.Projects;
+using Azure.Identity;
 using ContractPulseAI.API.Models.Dtos;
 using ContractPulseAI.API.Models.Entities;
 using ContractPulseAI.API.Repositories.Interface;
@@ -8,7 +8,6 @@ using ContractPulseAI.API.Services.Interface;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
-using OpenAI;
 using OpenAI.Chat;
 
 namespace ContractPulseAI.API.Services.Implementation
@@ -17,20 +16,29 @@ namespace ContractPulseAI.API.Services.Implementation
     {
         private readonly IRfpRepository _repository;
         private readonly ChatClient _chatClient;
+        private readonly AgentsClient _agentsClient;
+        private readonly string _agentId;
 
-        public RfpService(IRfpRepository repository)
+        public RfpService(IRfpRepository repository, IConfiguration configuration)
         {
             _repository = repository;
 
-            // Fetch Azure configuration settings from system environment keys or fallback defaults
-            string endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT") ?? "https://azure.com";
-            string apiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY") ?? "your-api-key";
-            string deploymentName = Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT") ?? "gpt-4o";
+            // 1. Pull the unified connection string from appsettings.json
+            string connectionString = configuration["AzureFoundrySettings:ProjectConnectionString"]
+                ?? throw new InvalidOperationException("Azure AI Foundry Project Connection String is missing from configurations.");
 
-            // Initialize the OpenAI client using the official Azure SDK standard pattern
-            // Note: If using Azure Open AI infrastructure, you can initialize via AzureOpenAIClient
-            var azureClient = new global::Azure.AI.OpenAI.AzureOpenAIClient(new Uri(endpoint), new ApiKeyCredential(apiKey));
-            _chatClient = azureClient.GetChatClient(deploymentName);
+            // 2. Pull the deployed gpt-5-mini Agent ID from appsettings.json
+            _agentId = configuration["AzureFoundrySettings:AgentId"]
+                ?? throw new InvalidOperationException("Azure AI Agent ID is missing from configurations.");
+
+            // 3. CLEAN BYPASS WORKAROUND: Extract project key and supply it via our custom provider wrapper
+            string foundryApiKey = configuration["AzureFoundrySettings:ApiKey"] ?? "YOUR_FOUNDRY_PROJECT_API_KEY";
+
+            // Fulfills the exact TokenCredential argument without assembly conflicts!
+            var cleanCredential = new CustomTokenCredentialProvider(foundryApiKey);
+
+            _agentsClient = new AgentsClient(connectionString, cleanCredential);
+
         }
 
         public async Task<List<ClientRfpDto>> GetAllRfpsAsync()
@@ -120,28 +128,67 @@ namespace ContractPulseAI.API.Services.Implementation
             // 2. WHITEBOARD STEP: PII Agent Call
             var (sanitizedRequirement, tokenDictionary) = ApplySanitizationGateway(rfpEntity.RFP_Prompt);
 
-            // 3. WHITEBOARD STEP: RFP Generation via LLM using pre-configured _chatClient
-            List<ChatMessage> messages = new List<ChatMessage>
-            {
-                new SystemChatMessage("You are an expert IT staff-augmentation RFP writer. Generate a comprehensive, professional technical capability response based on the client requirements."),
-                new UserChatMessage(sanitizedRequirement)
-            };
+            // 3. WHITEBOARD STEP: Foundry Agent Conversation Pipeline (Replaces ChatClient)
+            // A. Provision an isolated conversation container thread on Azure AI Foundry
+            Response<AgentThread> threadResponse = await _agentsClient.CreateThreadAsync();
+            string threadId = threadResponse.Value.Id;
 
-            ChatCompletion completion = await _chatClient.CompleteChatAsync(messages);
-            string generatedContentPlaceholder = completion.Content[0].Text;
+            // B. Push the sanitized prompt text as a User Message onto the active thread
+            Response<ThreadMessage> messageResponse = await _agentsClient.CreateMessageAsync(
+                threadId,
+                MessageRole.User,
+                sanitizedRequirement
+            );
+
+            // C. Fire up the Agent execution run using your configured gpt-5-mini Agent ID
+            Response<ThreadRun> runResponse = await _agentsClient.CreateRunAsync(threadId, _agentId);
+            string runId = runResponse.Value.Id;
+
+            // D. Polling Loop: Check execution states until the model finishes building content sections
+            ThreadRun currentRun;
+            do
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1)); // Polls every 1 second for rapid working
+                Response<ThreadRun> checkResponse = await _agentsClient.GetRunAsync(threadId, runId);
+                currentRun = checkResponse.Value;
+            }
+            while (currentRun.Status == RunStatus.Queued || currentRun.Status == RunStatus.InProgress);
+
+            // E. Extract the generated response string text out of the thread timeline context
+            string generatedContentPlaceholder = string.Empty;
+            if (currentRun.Status == RunStatus.Completed)
+            {
+                Response<PageableList<ThreadMessage>> listResponse = await _agentsClient.GetMessagesAsync(threadId);
+                // The newest response from your agent sits at the top index of the message tracking history array
+                var assistantMessage = listResponse.Value.Data.FirstOrDefault(m => m.Role == MessageRole.Agent);
+
+                // 2. Loop through ContentItems collection instead of Content array to grab the text node
+                if (assistantMessage != null)
+                {
+                    foreach (var contentItem in assistantMessage.ContentItems)
+                    {
+                        if (contentItem is MessageTextContent textItem)
+                        {
+                            generatedContentPlaceholder = textItem.Text;
+                            break; // Stop parsing once the core response block text is found
+                        }
+                    }
+                }
+            }
+            else
+            {
+                throw new Exception($"Azure AI Foundry Agent run failed with fatal cloud runtime status: {currentRun.Status}");
+            }
 
             // 4. DE-ANONYMIZATION
             string finalizedTextContent = RehydrateTokens(generatedContentPlaceholder, tokenDictionary);
 
-            // 5. WHITEBOARD STEP: File Generation (OpenXML)
-            byte[] docxBytes = CreateOpenXmlWordDocument(finalizedTextContent);
-
-            // 6. STATE UPDATE: Save generated links and update status
-            rfpEntity.RFP_Link = $"https://windows.net_{rfpEntity.ID}.docx";
+            // 5. MEMORY-ONLY STREAM CONFIGURATION (Bypasses Blob Storage completely)
+            // Generate the path pointer straight back to your local API stream action endpoint
+            rfpEntity.RFP_Link = $"/api/rfp/download/{rfpEntity.ID}";
             rfpEntity.RFP_Status = "Generated";
             rfpEntity.LastUpdatedDate = DateTime.UtcNow;
-
-            rfpEntity.RFP_Prompt = finalizedTextContent; // Optionally store the generated content for reference
+            rfpEntity.RFP_Prompt = finalizedTextContent; // Retained safely within your Azure SQL schema
 
             await _repository.UpdateAsync(rfpEntity);
 
@@ -235,4 +282,29 @@ namespace ContractPulseAI.API.Services.Implementation
 
         #endregion
     }
+
+
+    // A lightweight, custom token adapter that fulfills the AgentsClient parameter architecture
+    public class CustomTokenCredentialProvider : Azure.Core.TokenCredential
+    {
+        private readonly string _token;
+
+        public CustomTokenCredentialProvider(string hardcodedTokenOrKey)
+        {
+            _token = hardcodedTokenOrKey;
+        }
+
+        // Fulfills the synchronous credential signature loop safely
+        public override Azure.Core.AccessToken GetToken(Azure.Core.TokenRequestContext requestContext, System.Threading.CancellationToken cancellationToken)
+        {
+            return new Azure.Core.AccessToken(_token, DateTimeOffset.UtcNow.AddHours(1));
+        }
+
+        // Fulfills the asynchronous token request signature loop safely
+        public override ValueTask<Azure.Core.AccessToken> GetTokenAsync(Azure.Core.TokenRequestContext requestContext, System.Threading.CancellationToken cancellationToken)
+        {
+            return new ValueTask<Azure.Core.AccessToken>(new Azure.Core.AccessToken(_token, DateTimeOffset.UtcNow.AddHours(1)));
+        }
+    }
+
 }
