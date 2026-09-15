@@ -5,9 +5,13 @@ namespace ContractPulseAI.API.Services.Interface
     public interface ISowService
     {
         /// <summary>
-        /// Combines existing RFP text, original requirements, and custom user prompts 
-        /// to draft a formal Statement of Work using Azure OpenAI.
+        /// Stateful RAG worker pipeline running manual vector lookups and gpt-5-mini threads.
         /// </summary>
         Task<ClientRfpDto> GenerateSowFromRfpAsync(SowGenerationRequestDto request);
+
+        /// <summary>
+        /// EXPOSES THE COMPILER: Connects the high-performance OpenXML utility to your controller.
+        /// </summary>
+        byte[] CreateOpenXmlWordDocument(string textParagraphs);
     }
 }
