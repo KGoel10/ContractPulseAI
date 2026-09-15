@@ -16,6 +16,7 @@ import Footer from "examples/Footer";
 function RFP() {
   const history = useHistory();
   const { id } = useParams();
+  const [activeRfpId, setActiveRfpId] = useState(id || "1");
   const [prompt, setPrompt] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,22 +24,21 @@ function RFP() {
 
   useEffect(() => {
     const fetchRfp = async () => {
+      const targetRfpId = id || "1";
+
+      setActiveRfpId(targetRfpId);
       if (!id) {
-        setError("RFP ID is missing from the URL.");
-        setIsLoading(false);
-        return;
+        history.replace(`/rfp/${targetRfpId}`);
       }
 
       try {
-        const rfp = await api.get(`/api/Rfp/${id}`);
+        const rfp = await api.get(`/api/Rfp/${targetRfpId}`);
         const rfpPrompt = rfp?.rfpPrompt || rfp?.rfp_prompt || "";
 
-        if (!rfpPrompt) {
-          throw new Error("RFP prompt was not returned by the server.");
-        }
-
         setPrompt(rfpPrompt);
-        localStorage.setItem("rfpPrompt", rfpPrompt);
+        if (rfpPrompt) {
+          localStorage.setItem("rfpPrompt", rfpPrompt);
+        }
       } catch (requestError) {
         setError(
           requestError.response?.data?.message ||
@@ -51,10 +51,10 @@ function RFP() {
     };
 
     fetchRfp();
-  }, [id]);
+  }, [id, history]);
 
   const handleNext = () => {
-    history.push(`/sow/${id}`);
+    history.push(`/sow/${activeRfpId}`);
   };
 
   const handleSave = () => {
@@ -67,7 +67,7 @@ function RFP() {
       <DashboardNavbar />
       <VuiBox mt={4}>
         <VuiBox my={3}>
-          <Grid container spacing={3} data-rfp-id={id}>
+          <Grid container spacing={3} data-rfp-id={activeRfpId}>
             <Grid item xs={12}>
               <Typography
                 variant="h5"
