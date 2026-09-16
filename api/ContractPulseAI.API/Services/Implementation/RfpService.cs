@@ -162,56 +162,70 @@ namespace ContractPulseAI.API.Services.Implementation
             // 2. WHITEBOARD STEP: PII Agent Call
             var (sanitizedRequirement, tokenDictionary) = ApplySanitizationGateway(rfpEntity.RFP_Prompt, rfpEntity.Client_Name, rfpEntity.Client_Email);
 
-            // 3. WHITEBOARD STEP: Foundry Agent Conversation Pipeline (Replaces ChatClient)
-            // A. Provision an isolated conversation container thread on Azure AI Foundry
-            Response<AgentThread> threadResponse = await _agentsClient.CreateThreadAsync();
-            string threadId = threadResponse.Value.Id;
-
-            // B. Push the sanitized prompt text as a User Message onto the active thread
-            Response<ThreadMessage> messageResponse = await _agentsClient.CreateMessageAsync(
-                threadId,
-                MessageRole.User,
-                sanitizedRequirement
-            );
-
-            // C. Fire up the Agent execution run using your configured gpt-5-mini Agent ID
-            Response<ThreadRun> runResponse = await _agentsClient.CreateRunAsync(threadId, _agentId);
-            string runId = runResponse.Value.Id;
-
-            // D. Polling Loop: Check execution states until the model finishes building content sections
-            ThreadRun currentRun;
-            do
-            {
-                await Task.Delay(TimeSpan.FromSeconds(1)); // Polls every 1 second for rapid working
-                Response<ThreadRun> checkResponse = await _agentsClient.GetRunAsync(threadId, runId);
-                currentRun = checkResponse.Value;
-            }
-            while (currentRun.Status == RunStatus.Queued || currentRun.Status == RunStatus.InProgress);
-
-            // E. Extract the generated response string text out of the thread timeline context
             string generatedContentPlaceholder = string.Empty;
-            if (currentRun.Status == RunStatus.Completed)
-            {
-                Response<PageableList<ThreadMessage>> listResponse = await _agentsClient.GetMessagesAsync(threadId);
-                // The newest response from your agent sits at the top index of the message tracking history array
-                var assistantMessage = listResponse.Value.Data.FirstOrDefault(m => m.Role == MessageRole.Agent);
 
-                // 2. Loop through ContentItems collection instead of Content array to grab the text node
-                if (assistantMessage != null)
+
+            try
+            {
+                // 3. WHITEBOARD STEP: Foundry Agent Conversation Pipeline (Replaces ChatClient)
+                // A. Provision an isolated conversation container thread on Azure AI Foundry
+                Response<AgentThread> threadResponse = await _agentsClient.CreateThreadAsync();
+                string threadId = threadResponse.Value.Id;
+
+                // B. Push the sanitized prompt text as a User Message onto the active thread
+                Response<ThreadMessage> messageResponse = await _agentsClient.CreateMessageAsync(
+                    threadId,
+                    MessageRole.User,
+                    sanitizedRequirement
+                );
+
+                // C. Fire up the Agent execution run using your configured gpt-5-mini Agent ID
+                Response<ThreadRun> runResponse = await _agentsClient.CreateRunAsync(threadId, _agentId);
+                string runId = runResponse.Value.Id;
+
+                // D. Polling Loop: Check execution states until the model finishes building content sections
+                ThreadRun currentRun;
+                do
                 {
-                    foreach (var contentItem in assistantMessage.ContentItems)
+                    await Task.Delay(TimeSpan.FromSeconds(1)); // Polls every 1 second for rapid working
+                    Response<ThreadRun> checkResponse = await _agentsClient.GetRunAsync(threadId, runId);
+                    currentRun = checkResponse.Value;
+                }
+
+                while (currentRun.Status.ToString().Equals("queued", StringComparison.OrdinalIgnoreCase) ||
+           currentRun.Status.ToString().Equals("in_progress", StringComparison.OrdinalIgnoreCase) ||
+           currentRun.Status.ToString().Equals("inprogress", StringComparison.OrdinalIgnoreCase));
+
+                if (currentRun.Status.ToString().Equals("completed", StringComparison.OrdinalIgnoreCase))
+                {
+                    Response<PageableList<ThreadMessage>> listResponse = await _agentsClient.GetMessagesAsync(threadId);
+                    var assistantMessage = listResponse.Value.Data.FirstOrDefault(m =>
+                        m.Role.ToString().Equals("agent", StringComparison.OrdinalIgnoreCase) ||
+                        m.Role.ToString().Equals("assistant", StringComparison.OrdinalIgnoreCase));
+
+                    if (assistantMessage != null)
                     {
-                        if (contentItem is MessageTextContent textItem)
+                        foreach (var contentItem in assistantMessage.ContentItems)
                         {
-                            generatedContentPlaceholder = textItem.Text;
-                            break; // Stop parsing once the core response block text is found
+                            if (contentItem is MessageTextContent textItem)
+                            {
+                                generatedContentPlaceholder = textItem.Text;
+                                break;
+                            }
                         }
                     }
                 }
+                else
+                {
+                    throw new Exception($"Azure AI Foundry Agent run failed with fatal cloud runtime status: {currentRun.Status}");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                throw new Exception($"Azure AI Foundry Agent run failed with fatal cloud runtime status: {currentRun.Status}");
+                // Update database log state to track runtime exceptions clearly
+                rfpEntity.RFP_Status = "Failed";
+                await _repository.UpdateAsync(rfpEntity);
+                throw new Exception($"Failed during Azure AI Agent cloud execution pipeline. Details: {ex.Message}", ex);
             }
 
             // 4. DE-ANONYMIZATION
@@ -349,8 +363,16 @@ namespace ContractPulseAI.API.Services.Implementation
             new System.Collections.Generic.KeyValuePair<string, string>("grant_type", "client_credentials"),
             new System.Collections.Generic.KeyValuePair<string, string>("client_id", _clientId),
             new System.Collections.Generic.KeyValuePair<string, string>("client_secret", _clientSecret),
-            new System.Collections.Generic.KeyValuePair<string, string>("scope", "https://azure.com")
+             new System.Collections.Generic.KeyValuePair<string, string>("scope", "https://cognitiveservices.azure.com/.default")
         });
+
+            // EMERGENCY OVERRIDE FALLBACK: Hardcode an absolute string wipe to guarantee the payload changes
+            //var dynamicBodyString = await requestBody.ReadAsStringAsync();
+            //if (dynamicBodyString.Contains("https://azure.com"))
+            //{
+            //    var correctedRawPayload = dynamicBodyString.Replace("https%3A%2F%2Fazure.com", "https%3A%2F%2Fcognitiveservices.azure.com%2F.default");
+            //    requestBody = new System.Net.Http.StringContent(correctedRawPayload, System.Text.Encoding.UTF8, "application/x-www-form-urlencoded");
+            //}
 
             var response = await _httpClient.PostAsync(tokenUrl, requestBody, cancellationToken);
             if (!response.IsSuccessStatusCode)
