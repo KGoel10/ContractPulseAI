@@ -114,6 +114,37 @@ namespace ContractPulseAI.API.Services.Implementation
             };
         }
 
+        public async Task<ClientRfpDto> UpdateRfpAsync(ClientRfpDto dto)
+        {
+            var rfp = _repository.GetByIdAsync(dto.Id).Result;
+            if(rfp is not null)
+            {
+                rfp.RFP_Prompt = dto.RfpPrompt;
+                rfp.RFP_Link = dto.RfpLink;
+                rfp.SOW_Link = dto.SowLink;
+                rfp.RFP_Status = dto.RfpStatus;
+                rfp.LastUpdatedDate = DateTime.UtcNow;
+                var entity = await _repository.UpdateAsync(rfp);
+
+                return new ClientRfpDto
+                {
+                    Id = entity.ID,
+                    ClientName = entity.Client_Name,
+                    ClientEmail = entity.Client_Email,
+                    RfpPrompt = entity.RFP_Prompt,
+                    RfpLink = entity.RFP_Link,
+                    SowLink = entity.SOW_Link,
+                    RfpStatus = entity.RFP_Status,
+                    CreatedDate = entity.Created_Date,
+                    LastUpdatedDate = entity.LastUpdatedDate
+                };
+            }
+            else
+            {
+                throw new Exception($"RFP with ID {dto.Id} not found.");
+            }
+        }
+
         public async Task<ClientRfpDto> GenerateRfpWordDocumentAsync(RfpGenerationRequestDto request)
         {
             // 1. WHITEBOARD STEP: SQL -> RFP (Initial Entry)

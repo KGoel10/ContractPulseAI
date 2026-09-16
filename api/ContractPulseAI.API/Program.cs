@@ -90,7 +90,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Skip HTTPS redirect in dev: the frontend calls the plain http port, and redirecting
+// breaks CORS (preflight/simple requests get a cross-origin redirect response).
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseCors("FrontendDev");
 

@@ -47,6 +47,17 @@ namespace ContractPulseAI.API.Controllers
                 createdRfp);
         }
 
+        [HttpPut]
+        public async Task<IActionResult> UpdateRfp(ClientRfpDto dto)
+        {
+            var createdRfp = await _rfpService.UpdateRfpAsync(dto);
+
+            return CreatedAtAction(
+                nameof(GetRfpById),
+                new { id = createdRfp.Id },
+                createdRfp);
+        }
+
         [HttpPost("RFP_Generation")]
         public async Task<IActionResult> GenerateRfpDocument([FromBody] RfpGenerationRequestDto request)
         {

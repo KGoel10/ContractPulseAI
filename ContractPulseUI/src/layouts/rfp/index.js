@@ -18,8 +18,10 @@ function RFP() {
   const { id } = useParams();
   const [activeRfpId, setActiveRfpId] = useState(id || "1");
   const [prompt, setPrompt] = useState("");
+  const [rfpData, setRfpData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -35,6 +37,7 @@ function RFP() {
         const rfp = await api.get(`/api/Rfp/${targetRfpId}`);
         const rfpPrompt = rfp?.rfpPrompt || rfp?.rfp_prompt || "";
 
+        setRfpData(rfp);
         setPrompt(rfpPrompt);
         if (rfpPrompt) {
           localStorage.setItem("rfpPrompt", rfpPrompt);
@@ -57,9 +60,37 @@ function RFP() {
     history.push(`/sow/${activeRfpId}`);
   };
 
-  const handleSave = () => {
-    localStorage.setItem("rfpPrompt", prompt);
-    setIsEditing(false);
+  const handleSave = async () => {
+    setIsSaving(true);
+    setError("");
+
+    try {
+      const dto = {
+        id: rfpData?.id ?? Number(activeRfpId),
+        clientName: rfpData?.clientName ?? "",
+        clientEmail: rfpData?.clientEmail ?? "",
+        rfpPrompt: prompt,
+        rfpLink: rfpData?.rfpLink ?? null,
+        sowLink: rfpData?.sowLink ?? null,
+        rfpStatus: rfpData?.rfpStatus ?? null,
+        createdDate: rfpData?.createdDate ?? new Date().toISOString(),
+        lastUpdatedDate: new Date().toISOString(),
+      };
+
+      const savedRfp = await api.put("/api/rfp", dto);
+
+      setRfpData(savedRfp);
+      localStorage.setItem("rfpPrompt", prompt);
+      setIsEditing(false);
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+          requestError.message ||
+          "Unable to save the RFP."
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -170,7 +201,7 @@ function RFP() {
                 variant="contained"
                 color="success"
                 onClick={handleSave}
-                disabled={!isEditing || isLoading}
+                disabled={!isEditing || isLoading || isSaving}
                 sx={{
                   mt: 2,
                   mr: 1,
@@ -181,7 +212,7 @@ function RFP() {
                    },
                 }}
               >
-                Save
+                {isSaving ? "Saving..." : "Save"}
               </Button>
               <Button
                 size="small"
