@@ -1,6 +1,6 @@
 ﻿using ContractPulseAI.API.Models.Dtos;
 
-namespace ContractPulseAI.API.Services.Implementation
+namespace ContractPulseAI.API.Services.Interface
 {
     public interface IPricingService
     {

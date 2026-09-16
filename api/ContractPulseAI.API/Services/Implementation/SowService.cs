@@ -22,9 +22,9 @@ namespace ContractPulseAI.API.Services.Implementation
     public class SowService : ISowService
     {
         private readonly IRfpRepository _repository;
-        private readonly SowGenerationClient _sowClient; // Decoupled RAG heavy lifting client
+        private readonly ISowGenerationClient _sowClient; // Decoupled RAG heavy lifting client
 
-        public SowService(IRfpRepository repository, SowGenerationClient sowClient)
+        public SowService(IRfpRepository repository, ISowGenerationClient sowClient)
         {
             _repository = repository;
             _sowClient = sowClient;

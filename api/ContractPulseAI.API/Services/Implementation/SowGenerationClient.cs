@@ -2,11 +2,12 @@
 using Azure.AI.Projects;
 using Azure.Search.Documents;
 using Azure.Search.Documents.Models;
+using ContractPulseAI.API.Services.Interface;
 using System.Text;
 
 namespace ContractPulseAI.API.Services.Implementation
 {
-    public class SowGenerationClient
+    public class SowGenerationClient : ISowGenerationClient
     {
         private readonly AgentsClient _agentsClient;
         private readonly SearchClient _searchClient;

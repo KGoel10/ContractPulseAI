@@ -35,6 +35,7 @@ builder.Services.AddScoped<IRfpRepository, RfpRepository>();
 builder.Services.AddScoped<IPricingService, PricingService>();
 builder.Services.AddScoped<IRfpService, RfpService>();
 builder.Services.AddScoped<ISowService, SowService>();
+builder.Services.AddScoped<ISowGenerationClient, SowGenerationClient>();
 
 var app = builder.Build();
 
