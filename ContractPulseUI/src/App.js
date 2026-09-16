@@ -15,6 +15,7 @@ import Configurator from "examples/Configurator";
 // Vision UI Dashboard React themes
 import theme from "assets/theme";
 import themeRTL from "assets/theme/theme-rtl";
+import contractLogo from "assets/images/logo_contract.png";
 
 // RTL plugins
 import rtlPlugin from "stylis-plugin-rtl";
@@ -48,6 +49,15 @@ export default function App() {
     document.body.setAttribute("dir", direction);
   }, [direction]);
 
+  // Use the branded logo for the browser tab.
+  useEffect(() => {
+    const favicon = document.querySelector('link[rel="shortcut icon"]');
+
+    if (favicon) {
+      favicon.href = contractLogo;
+    }
+  }, []);
+
   // Setting page scroll to 0 when changing the route
   useEffect(() => {
     document.documentElement.scrollTop = 0;
@@ -76,7 +86,6 @@ export default function App() {
             <Sidenav
               color={sidenavColor}
               brand=""
-              brandName="CONTRACTPULSE AI"
               routes={routes}
             />
             <Configurator />
@@ -97,7 +106,6 @@ export default function App() {
           <Sidenav
             color={sidenavColor}
             brand=""
-            brandName="CONTRACTPULSE AI"
             routes={routes}
           />
           <Configurator />
