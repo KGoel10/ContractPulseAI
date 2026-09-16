@@ -16,29 +16,33 @@ import Footer from "examples/Footer";
 function RFP() {
   const history = useHistory();
   const { id } = useParams();
+  const [activeRfpId, setActiveRfpId] = useState(id || "1");
   const [prompt, setPrompt] = useState("");
+  const [rfpData, setRfpData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchRfp = async () => {
+      const targetRfpId = id || "1";
+
+      setActiveRfpId(targetRfpId);
       if (!id) {
-        setError("RFP ID is missing from the URL.");
-        setIsLoading(false);
-        return;
+        history.replace(`/rfp/${targetRfpId}`);
       }
 
       try {
-        const rfp = await api.get(`/api/Rfp/${id}`);
+        const rfp = await api.get(`/api/Rfp/${targetRfpId}`);
         const rfpPrompt = rfp?.rfpPrompt || rfp?.rfp_prompt || "";
 
-        if (!rfpPrompt) {
-          throw new Error("RFP prompt was not returned by the server.");
-        }
-
+        setRfpData(rfp);
         setPrompt(rfpPrompt);
-        localStorage.setItem("rfpPrompt", rfpPrompt);
+        if (rfpPrompt) {
+          localStorage.setItem("rfpPrompt", rfpPrompt);
+        }
       } catch (requestError) {
         setError(
           requestError.response?.data?.message ||
@@ -51,15 +55,57 @@ function RFP() {
     };
 
     fetchRfp();
-  }, [id]);
+  }, [id, history]);
 
-  const handleNext = () => {
-    history.push(`/sow/${id}`);
+  const handleNext = async () => {
+    setIsGenerating(true);
+    setError("");
+
+    try {
+      await api.post(`/api/rfp/generation?id=${activeRfpId}`);
+      history.push(`/sow/${activeRfpId}`);
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+          requestError.message ||
+          "Unable to generate the RFP document."
+      );
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
-  const handleSave = () => {
-    localStorage.setItem("rfpPrompt", prompt);
-    setIsEditing(false);
+  const handleSave = async () => {
+    setIsSaving(true);
+    setError("");
+
+    try {
+      const dto = {
+        id: rfpData?.id ?? Number(activeRfpId),
+        clientName: rfpData?.clientName ?? "",
+        clientEmail: rfpData?.clientEmail ?? "",
+        rfpPrompt: prompt,
+        rfpLink: rfpData?.rfpLink ?? null,
+        sowLink: rfpData?.sowLink ?? null,
+        rfpStatus: rfpData?.rfpStatus ?? null,
+        createdDate: rfpData?.createdDate ?? new Date().toISOString(),
+        lastUpdatedDate: new Date().toISOString(),
+      };
+
+      const savedRfp = await api.put("/api/rfp", dto);
+
+      setRfpData(savedRfp);
+      localStorage.setItem("rfpPrompt", prompt);
+      setIsEditing(false);
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+          requestError.message ||
+          "Unable to save the RFP."
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -67,7 +113,7 @@ function RFP() {
       <DashboardNavbar />
       <VuiBox mt={4}>
         <VuiBox my={3}>
-          <Grid container spacing={3} data-rfp-id={id}>
+          <Grid container spacing={3} data-rfp-id={activeRfpId}>
             <Grid item xs={12}>
               <Typography
                 variant="h5"
@@ -170,7 +216,7 @@ function RFP() {
                 variant="contained"
                 color="success"
                 onClick={handleSave}
-                disabled={!isEditing || isLoading}
+                disabled={!isEditing || isLoading || isSaving}
                 sx={{
                   mt: 2,
                   mr: 1,
@@ -181,14 +227,14 @@ function RFP() {
                    },
                 }}
               >
-                Save
+                {isSaving ? "Saving..." : "Save"}
               </Button>
               <Button
                 size="small"
                 variant="contained"
                 color="info"
                 onClick={handleNext}
-                disabled={isEditing || isLoading || !prompt.trim()}
+                disabled={isEditing || isLoading || isGenerating || !prompt.trim()}
                 sx={{
                   mt: 2,
                   px: 2.5,
@@ -198,7 +244,7 @@ function RFP() {
                    },
                 }}
               >
-                Next
+                {isGenerating ? "Generating..." : "Next"}
               </Button>
               {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
              

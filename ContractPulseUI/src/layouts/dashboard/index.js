@@ -20,32 +20,6 @@ import DashboardNavbar from "examples/Navbars/DashboardNavbar";
 import Footer from "examples/Footer";
 import Table from "examples/Tables/Table";
 
-const USE_DEMO_DATA = true;
-
-const demoRfps = [
-  {
-    id: 101,
-    clientName: "Northstar Health",
-    clientEmail: "procurement@northstar.example",
-    rfpStatus: "SOW_Generated",
-    sowLink: "https://example.com/northstar-sow",
-  },
-  {
-    id: 102,
-    clientName: "Atlas Retail Group",
-    clientEmail: "projects@atlas.example",
-    rfpStatus: "RFP_Generated",
-    sowLink: "",
-  },
-  {
-    id: 103,
-    clientName: "Pioneer Logistics",
-    clientEmail: "technology@pioneer.example",
-    rfpStatus: "In Progress",
-    sowLink: "",
-  },
-];
-
 const tableColumns = [
   { name: "id", align: "left", width: "8%" },
   { name: "client", align: "left", width: "20%" },
@@ -80,8 +54,7 @@ function Dashboard() {
     loadRfps();
   }, []);
 
-  const displayedRfps = USE_DEMO_DATA ? demoRfps : rfps;
-  const tableRows = displayedRfps.map((rfp) => ({
+  const tableRows = rfps.map((rfp) => ({
     id: rfp.id,
     client: rfp.clientName,
     email: rfp.clientEmail,
@@ -148,12 +121,12 @@ function Dashboard() {
                     Track client proposals and generated statements of work.
                   </VuiTypography>
                 </VuiBox>
-                {!USE_DEMO_DATA && error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-                {!USE_DEMO_DATA && isLoading ? (
+                {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+                {isLoading ? (
                   <VuiBox display="flex" justifyContent="center" py={4}>
                     <CircularProgress color="info" size={28} />
                   </VuiBox>
-                ) : displayedRfps.length === 0 ? (
+                ) : rfps.length === 0 ? (
                   <VuiTypography variant="button" color="text" py={3}>
                     No RFPs found.
                   </VuiTypography>

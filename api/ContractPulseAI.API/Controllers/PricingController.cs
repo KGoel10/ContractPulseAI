@@ -9,8 +9,8 @@ namespace ContractPulseAI.API.Controllers
     [ApiController]
     public class PricingController : ControllerBase
     {
-        private readonly IPricingService _pricingService;
-        public PricingController(IPricingService pricingService) 
+        private readonly PricingService _pricingService;
+        public PricingController(PricingService pricingService) 
         {
             _pricingService = pricingService;
         }

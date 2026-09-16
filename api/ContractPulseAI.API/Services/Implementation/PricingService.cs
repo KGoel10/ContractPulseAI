@@ -1,8 +1,8 @@
 ﻿using ContractPulseAI.API.Models.Dtos;
 using ContractPulseAI.API.Repositories.Interface;
-using ContractPulseAI.API.Services.Implementation;
+using ContractPulseAI.API.Services.Interface;
 
-namespace ContractPulseAI.API.Services.Interface
+namespace ContractPulseAI.API.Services.Implementation
 {
     public class PricingService : IPricingService
     {
