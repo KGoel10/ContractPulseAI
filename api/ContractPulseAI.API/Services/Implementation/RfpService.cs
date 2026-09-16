@@ -19,25 +19,29 @@ namespace ContractPulseAI.API.Services.Implementation
         private readonly AgentsClient _agentsClient;
         private readonly string _agentId;
 
-        public RfpService(IRfpRepository repository, IConfiguration configuration)
+        public RfpService(IRfpRepository repository, IConfiguration configuration, AgentsClient agentsClient)
         {
             _repository = repository;
 
-            // 1. Pull the unified connection string from appsettings.json
-            string connectionString = configuration["AzureFoundrySettings:ProjectConnectionString"]
-                ?? throw new InvalidOperationException("Azure AI Foundry Project Connection String is missing from configurations.");
+            //// 1. Pull the unified connection string from appsettings.json
+            //string connectionString = configuration["AzureFoundrySettings:ProjectConnectionString"]
+            //    ?? throw new InvalidOperationException("Azure AI Foundry Project Connection String is missing from configurations.");
 
-            // 2. Pull the deployed gpt-5-mini Agent ID from appsettings.json
+            //// 2. Pull the deployed gpt-5-mini Agent ID from appsettings.json
+            //_agentId = configuration["AzureFoundrySettings:AgentId"]
+            //    ?? throw new InvalidOperationException("Azure AI Agent ID is missing from configurations.");
+
+            //// 3. CLEAN BYPASS WORKAROUND: Extract project key and supply it via our custom provider wrapper
+            //string foundryApiKey = configuration["AzureFoundrySettings:ApiKey"] ?? "YOUR_FOUNDRY_PROJECT_API_KEY";
+
+            //// Fulfills the exact TokenCredential argument without assembly conflicts!
+            //var cleanCredential = new CustomTokenCredentialProvider(foundryApiKey);
+
+            //_agentsClient = new AgentsClient(connectionString, cleanCredential);
+
+            _agentsClient = agentsClient;
             _agentId = configuration["AzureFoundrySettings:AgentId"]
                 ?? throw new InvalidOperationException("Azure AI Agent ID is missing from configurations.");
-
-            // 3. CLEAN BYPASS WORKAROUND: Extract project key and supply it via our custom provider wrapper
-            string foundryApiKey = configuration["AzureFoundrySettings:ApiKey"] ?? "YOUR_FOUNDRY_PROJECT_API_KEY";
-
-            // Fulfills the exact TokenCredential argument without assembly conflicts!
-            var cleanCredential = new CustomTokenCredentialProvider(foundryApiKey);
-
-            _agentsClient = new AgentsClient(connectionString, cleanCredential);
 
         }
 
@@ -126,7 +130,7 @@ namespace ContractPulseAI.API.Services.Implementation
             rfpEntity = await _repository.CreateAsync(rfpEntity);
 
             // 2. WHITEBOARD STEP: PII Agent Call
-            var (sanitizedRequirement, tokenDictionary) = ApplySanitizationGateway(rfpEntity.RFP_Prompt);
+            var (sanitizedRequirement, tokenDictionary) = ApplySanitizationGateway(rfpEntity.RFP_Prompt, rfpEntity.Client_Name, rfpEntity.Client_Email);
 
             // 3. WHITEBOARD STEP: Foundry Agent Conversation Pipeline (Replaces ChatClient)
             // A. Provision an isolated conversation container thread on Azure AI Foundry
@@ -208,7 +212,7 @@ namespace ContractPulseAI.API.Services.Implementation
 
         #region Private Architecture Helpers
 
-        private (string SanitizedText, Dictionary<string, string> TokenMap) ApplySanitizationGateway(string rawText)
+        private (string SanitizedText, Dictionary<string, string> TokenMap) ApplySanitizationGateway(string rawText, string ClientName, string ClientEmail)
         {
             var tokenMap = new Dictionary<string, string>();
             if (string.IsNullOrEmpty(rawText)) return (rawText, tokenMap);
@@ -216,10 +220,16 @@ namespace ContractPulseAI.API.Services.Implementation
             string sanitized = rawText;
 
             // Quick demo check of custom PII scrubbing patterns matching client variables
-            if (sanitized.Contains("Acme Corp"))
+            if (sanitized.Contains(ClientName))
             {
-                tokenMap.Add("[CLIENT_A]", "Acme Corp");
-                sanitized = sanitized.Replace("Acme Corp", "[CLIENT_A]");
+                tokenMap.Add("[CLIENT_A]", ClientName);
+                sanitized = sanitized.Replace(ClientName, "[CLIENT_A]");
+            }
+
+            if (sanitized.Contains(ClientEmail))
+            {
+                tokenMap.Add("[CLIENT_Email]", ClientEmail);
+                sanitized = sanitized.Replace(ClientEmail, "[CLIENT_Email]");
             }
 
             return (sanitized, tokenMap);
@@ -285,6 +295,7 @@ namespace ContractPulseAI.API.Services.Implementation
 
 
     // A lightweight, custom token adapter that fulfills the AgentsClient parameter architecture
+    // A lightweight, custom token adapter that fulfills the AgentsClient parameter architecture
     public class CustomTokenCredentialProvider : Azure.Core.TokenCredential
     {
         private readonly string _token;
@@ -294,7 +305,6 @@ namespace ContractPulseAI.API.Services.Implementation
             _token = hardcodedTokenOrKey;
         }
 
-        // Fulfills the synchronous credential signature loop safely
         public override Azure.Core.AccessToken GetToken(Azure.Core.TokenRequestContext requestContext, System.Threading.CancellationToken cancellationToken)
         {
             return new Azure.Core.AccessToken(_token, DateTimeOffset.UtcNow.AddHours(1));
@@ -306,5 +316,6 @@ namespace ContractPulseAI.API.Services.Implementation
             return new ValueTask<Azure.Core.AccessToken>(new Azure.Core.AccessToken(_token, DateTimeOffset.UtcNow.AddHours(1)));
         }
     }
+
 
 }
