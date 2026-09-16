@@ -15,7 +15,6 @@ namespace ContractPulseAI.API.Services.Implementation
     public class RfpService : IRfpService
     {
         private readonly IRfpRepository _repository;
-        private readonly ChatClient _chatClient;
         private readonly AgentsClient _agentsClient;
         private readonly string _agentId;
 
@@ -145,20 +144,20 @@ namespace ContractPulseAI.API.Services.Implementation
             }
         }
 
-        public async Task<ClientRfpDto> GenerateRfpWordDocumentAsync(RfpGenerationRequestDto request)
+        public async Task<ClientRfpDto> GenerateRfpWordDocumentAsync(int id)
         {
-            // 1. WHITEBOARD STEP: SQL -> RFP (Initial Entry)
-            var rfpEntity = new ClientRFP
-            {
-                Client_Name = request.ClientName ?? "Unknown Client",
-                Client_Email = request.ClientEmail ?? "unknown@client.com",
-                RFP_Prompt = request.ClientRequirement,
-                RFP_Status = "Processing",
-                Created_Date = DateTime.UtcNow,
-                LastUpdatedDate = DateTime.UtcNow
-            };
+            var rfpEntity = _repository.GetByIdAsync(id).Result;
 
-            rfpEntity = await _repository.CreateAsync(rfpEntity);
+            if(rfpEntity is null)
+            {
+                throw new Exception($"RFP with ID {id} not found.");
+            }
+
+            // 1. WHITEBOARD STEP: SQL -> RFP (Initial Entry)
+            rfpEntity.RFP_Status = "Processing";
+            rfpEntity.LastUpdatedDate = DateTime.UtcNow;
+
+            rfpEntity = await _repository.UpdateAsync(rfpEntity);
 
             // 2. WHITEBOARD STEP: PII Agent Call
             var (sanitizedRequirement, tokenDictionary) = ApplySanitizationGateway(rfpEntity.RFP_Prompt, rfpEntity.Client_Name, rfpEntity.Client_Email);

@@ -22,6 +22,7 @@ function RFP() {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -56,8 +57,22 @@ function RFP() {
     fetchRfp();
   }, [id, history]);
 
-  const handleNext = () => {
-    history.push(`/sow/${activeRfpId}`);
+  const handleNext = async () => {
+    setIsGenerating(true);
+    setError("");
+
+    try {
+      await api.post(`/api/rfp/generation?id=${activeRfpId}`);
+      history.push(`/sow/${activeRfpId}`);
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+          requestError.message ||
+          "Unable to generate the RFP document."
+      );
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleSave = async () => {
@@ -219,7 +234,7 @@ function RFP() {
                 variant="contained"
                 color="info"
                 onClick={handleNext}
-                disabled={isEditing || isLoading || !prompt.trim()}
+                disabled={isEditing || isLoading || isGenerating || !prompt.trim()}
                 sx={{
                   mt: 2,
                   px: 2.5,
@@ -229,7 +244,7 @@ function RFP() {
                    },
                 }}
               >
-                Next
+                {isGenerating ? "Generating..." : "Next"}
               </Button>
               {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
              

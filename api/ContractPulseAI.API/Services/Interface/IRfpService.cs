@@ -13,6 +13,6 @@ namespace ContractPulseAI.API.Services.Interface
         Task<ClientRfpDto> UpdateRfpAsync(ClientRfpDto dto);
 
         // Updated to process complex request objects and return full stateful records
-        Task<ClientRfpDto> GenerateRfpWordDocumentAsync(RfpGenerationRequestDto request);
+        Task<ClientRfpDto> GenerateRfpWordDocumentAsync(int id);
     }
 }
