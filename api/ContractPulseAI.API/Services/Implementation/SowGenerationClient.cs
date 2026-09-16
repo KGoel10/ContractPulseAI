@@ -13,17 +13,38 @@ namespace ContractPulseAI.API.Services.Implementation
         private readonly SearchClient _searchClient;
         private readonly string _agentId;
 
-        public SowGenerationClient(IConfiguration configuration)
+        public SowGenerationClient(IConfiguration configuration, AgentsClient agentsClient)
         {
-            // 1. Extract settings from appsettings.json
-            string connectionString = configuration["AzureFoundrySettings:ProjectConnectionString"]
-                ?? throw new InvalidOperationException("Project Connection String is missing from configurations.");
+            //// 1. Extract settings from appsettings.json
+            //string connectionString = configuration["AzureFoundrySettings:ProjectConnectionString"]
+            //    ?? throw new InvalidOperationException("Project Connection String is missing from configurations.");
 
+            //_agentId = configuration["AzureFoundrySettings:AgentId"]
+            //    ?? throw new InvalidOperationException("Agent ID is missing from configurations.");
+
+            //string foundryApiKey = configuration["AzureFoundrySettings:ApiKey"]
+            //    ?? throw new InvalidOperationException("Foundry API Key is missing from configurations.");
+
+            //string searchEndpoint = configuration["AzureServices:SearchEndpoint"]
+            //    ?? "https://windows.net";
+
+            //string searchApiKey = configuration["AzureServices:SearchApiKey"]
+            //    ?? throw new InvalidOperationException("Search API Key is missing from configurations.");
+
+            //string searchIndexName = configuration["AzureServices:SearchIndexName"]
+            //    ?? "search-1789470637458"; // Set to your live active index name!
+
+            //// 2. Initialize the internal clients using the custom token provider workaround to prevent duplicate metadata errors
+            //var cleanCredential = new CustomTokenCredentialProvider(foundryApiKey);
+            //_agentsClient = new AgentsClient(connectionString, cleanCredential);
+            //_searchClient = new SearchClient(new Uri(searchEndpoint), searchIndexName, new Azure.AzureKeyCredential(searchApiKey));
+
+            // 1. Inject the working, centrally authenticated client provided by Program.cs
+            _agentsClient = agentsClient;
+
+            // 2. Pull down remaining infrastructure settings safely
             _agentId = configuration["AzureFoundrySettings:AgentId"]
                 ?? throw new InvalidOperationException("Agent ID is missing from configurations.");
-
-            string foundryApiKey = configuration["AzureFoundrySettings:ApiKey"]
-                ?? throw new InvalidOperationException("Foundry API Key is missing from configurations.");
 
             string searchEndpoint = configuration["AzureServices:SearchEndpoint"]
                 ?? "https://windows.net";
@@ -32,12 +53,10 @@ namespace ContractPulseAI.API.Services.Implementation
                 ?? throw new InvalidOperationException("Search API Key is missing from configurations.");
 
             string searchIndexName = configuration["AzureServices:SearchIndexName"]
-                ?? "search-1789470637458"; // Set to your live active index name!
+                ?? "search-1789470637458";
 
-            // 2. Initialize the internal clients using the custom token provider workaround to prevent duplicate metadata errors
-            var cleanCredential = new CustomTokenCredentialProvider(foundryApiKey);
-            _agentsClient = new AgentsClient(connectionString, cleanCredential);
-            _searchClient = new SearchClient(new Uri(searchEndpoint), searchIndexName, new Azure.AzureKeyCredential(searchApiKey));
+            // 3. Initialize the AI search client natively
+            _searchClient = new SearchClient(new System.Uri(searchEndpoint), searchIndexName, new Azure.AzureKeyCredential(searchApiKey));
         }
 
         /// <summary>

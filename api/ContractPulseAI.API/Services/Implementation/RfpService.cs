@@ -298,22 +298,56 @@ namespace ContractPulseAI.API.Services.Implementation
     // A lightweight, custom token adapter that fulfills the AgentsClient parameter architecture
     public class CustomTokenCredentialProvider : Azure.Core.TokenCredential
     {
-        private readonly string _token;
+        private readonly string _tenantId;
+        private readonly string _clientId;
+        private readonly string _clientSecret;
+        private static readonly System.Net.Http.HttpClient _httpClient = new System.Net.Http.HttpClient();
 
-        public CustomTokenCredentialProvider(string hardcodedTokenOrKey)
+        public CustomTokenCredentialProvider(string tenantId, string clientId, string clientSecret)
         {
-            _token = hardcodedTokenOrKey;
+            _tenantId = tenantId;
+            _clientId = clientId;
+            _clientSecret = clientSecret;
+        }
+
+        private async System.Threading.Tasks.Task<Azure.Core.AccessToken> FetchValidTokenAsync(System.Threading.CancellationToken cancellationToken)
+        {
+            var tokenUrl = $"https://login.microsoftonline.com/{_tenantId}/oauth2/v2.0/token";
+
+            var requestBody = new System.Net.Http.FormUrlEncodedContent(new[]
+            {
+            new System.Collections.Generic.KeyValuePair<string, string>("grant_type", "client_credentials"),
+            new System.Collections.Generic.KeyValuePair<string, string>("client_id", _clientId),
+            new System.Collections.Generic.KeyValuePair<string, string>("client_secret", _clientSecret),
+            new System.Collections.Generic.KeyValuePair<string, string>("scope", "https://azure.com")
+        });
+
+            var response = await _httpClient.PostAsync(tokenUrl, requestBody, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                string errorContent = await response.Content.ReadAsStringAsync();
+                throw new Exception($"Failed to retrieve token from Entra ID: {response.StatusCode} - {errorContent}");
+            }
+
+            var jsonString = await response.Content.ReadAsStringAsync();
+            using var doc = System.Text.Json.JsonDocument.Parse(jsonString);
+            var root = doc.RootElement;
+
+            string token = root.GetProperty("access_token").GetString();
+            int expiresInSeconds = root.GetProperty("expires_in").GetInt32();
+
+            // Pass a valid, decoded JWT token context back to the active client
+            return new Azure.Core.AccessToken(token, DateTimeOffset.UtcNow.AddSeconds(expiresInSeconds - 60));
         }
 
         public override Azure.Core.AccessToken GetToken(Azure.Core.TokenRequestContext requestContext, System.Threading.CancellationToken cancellationToken)
         {
-            return new Azure.Core.AccessToken(_token, DateTimeOffset.UtcNow.AddHours(1));
+            return FetchValidTokenAsync(cancellationToken).GetAwaiter().GetResult();
         }
 
-        // Fulfills the asynchronous token request signature loop safely
-        public override ValueTask<Azure.Core.AccessToken> GetTokenAsync(Azure.Core.TokenRequestContext requestContext, System.Threading.CancellationToken cancellationToken)
+        public override System.Threading.Tasks.ValueTask<Azure.Core.AccessToken> GetTokenAsync(Azure.Core.TokenRequestContext requestContext, System.Threading.CancellationToken cancellationToken)
         {
-            return new ValueTask<Azure.Core.AccessToken>(new Azure.Core.AccessToken(_token, DateTimeOffset.UtcNow.AddHours(1)));
+            return new System.Threading.Tasks.ValueTask<Azure.Core.AccessToken>(FetchValidTokenAsync(cancellationToken));
         }
     }
 
