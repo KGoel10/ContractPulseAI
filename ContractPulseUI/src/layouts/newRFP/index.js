@@ -32,6 +32,35 @@ function newRFP() {
     setSuccess("");
   };
 
+  const normalizeRequirementText = (value) =>
+    value
+      .replace(/\r\n/g, "\n")
+      .split("\n")
+      .map((line) => line.replace(/\s+/g, " ").trim())
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+  const handleRequirementPaste = (event) => {
+    event.preventDefault();
+    const pastedText = event.clipboardData.getData("text");
+    const normalizedText = normalizeRequirementText(pastedText);
+
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      clientRequirement: normalizedText,
+    }));
+    setError("");
+    setSuccess("");
+  };
+
+  const handleRequirementBlur = () => {
+    setFormValues((currentValues) => ({
+      ...currentValues,
+      clientRequirement: normalizeRequirementText(currentValues.clientRequirement),
+    }));
+  };
+
   const handleGenerate = async () => {
     setIsLoading(true);
     setError("");
@@ -80,10 +109,13 @@ function newRFP() {
               <TextField
                 fullWidth
                 multiline
-                minRows={8}
+                minRows={6}
+                maxRows={18}
                 // label="RFP prompt"
                 value={formValues.clientRequirement}
                 onChange={handleChange("clientRequirement")}
+                onBlur={handleRequirementBlur}
+                onPaste={handleRequirementPaste}
                 placeholder="Enter your RFP prompt"
                 sx={{
                   "& .MuiInputBase-root": {
