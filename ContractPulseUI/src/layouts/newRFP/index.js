@@ -157,8 +157,6 @@ function newRFP() {
                 onClick={handleGenerate}
                 disabled={
                   isLoading ||
-                  !formValues.clientName.trim() ||
-                  !formValues.clientEmail.trim() ||
                   !formValues.clientRequirement.trim()
                 }
                 sx={{

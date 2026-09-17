@@ -6,11 +6,10 @@ import {
   CircularProgress,
   Grid,
   IconButton,
-  Link,
   Tooltip,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import DownloadIcon from "@mui/icons-material/Download";
 import api from "services/axios";
 
 import VuiBox from "components/VuiBox";
@@ -34,6 +33,13 @@ function Dashboard() {
   const [rfps, setRfps] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const handleSowDownload = (rfp) => {
+    const downloadPath = rfp.sowLink || `/api/Sow/download/${rfp.id}`;
+    const href = downloadPath.startsWith("http") ? downloadPath : `${api.apiClient.defaults.baseURL}${downloadPath}`;
+
+    window.open(href, "_blank", "noopener,noreferrer");
+  };
 
   useEffect(() => {
     const loadRfps = async () => {
@@ -67,18 +73,13 @@ function Dashboard() {
         {rfp.rfpStatus || "Pending"}
       </VuiTypography>
     ),
-    sow: rfp.sowLink ? (
-      <Link
-        href={rfp.sowLink}
-        target="_blank"
-        rel="noreferrer"
-        sx={{ color: "#66b3ff", fontSize: "0.75rem", fontWeight: 500 }}
+    sow: (
+      <VuiTypography
+        variant="button"
+        color={rfp.rfpStatus === "SOW_Generated" ? "success" : "text"}
+        fontWeight="medium"
       >
-        Open SOW
-      </Link>
-    ) : (
-      <VuiTypography variant="button" color="text">
-        Not generated
+        {rfp.rfpStatus || "Pending"}
       </VuiTypography>
     ),
     actions: (
@@ -92,13 +93,14 @@ function Dashboard() {
             <EditIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-        <Tooltip title="Open SOW">
+        <Tooltip title="Download SOW">
           <IconButton
-            aria-label={`Open SOW ${rfp.id}`}
-            onClick={() => history.push(`/sow/${rfp.id}`)}
+            aria-label={`Download SOW ${rfp.id}`}
+            onClick={() => handleSowDownload(rfp)}
+            disabled={!rfp.sowLink && !rfp.id}
             sx={{ color: "#66b3ff" }}
           >
-            <OpenInNewIcon fontSize="small" />
+            <DownloadIcon fontSize="small" />
           </IconButton>
         </Tooltip>
       </VuiBox>

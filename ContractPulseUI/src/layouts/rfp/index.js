@@ -141,7 +141,8 @@ function RFP() {
               <TextField
                 fullWidth
                 multiline
-                minRows={8}
+                minRows={1}
+                maxRows={18}
                 value={isLoading ? "Loading RFP..." : prompt}
                 onChange={(event) => setPrompt(event.target.value)}
                 InputProps={{ readOnly: !isEditing || isLoading }}
