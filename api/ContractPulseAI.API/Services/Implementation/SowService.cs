@@ -30,23 +30,24 @@ namespace ContractPulseAI.API.Services.Implementation
             _sowClient = sowClient;
         }
 
-        public async Task<ClientRfpDto> GenerateSowFromRfpAsync(SowGenerationRequestDto request)
+        public async Task<ClientRfpDto> GenerateSowFromRfpAsync(int id)
         {
             // STEP 1: SQL Data Intake (Fetch existing deal progress records)
-            var rfpEntity = await _repository.GetByIdAsync(request.RfpId);
-            if (rfpEntity == null)
+            var rfpEntity = _repository.GetByIdAsync(id).Result;
+
+            if (rfpEntity is null)
             {
-                throw new KeyNotFoundException($"RFP record with ID {request.RfpId} was not found.");
+                throw new Exception($"RFP with ID {id} not found.");
             }
 
             // STEP 2 & 3: Offload Manual RAG Search & Agent Execution entirely to your client wrapper
             // This strips out all static prompts and long string builders from your code!
             string generatedSowContent = await _sowClient.ExecuteRfpToSowPipelineAsync(
-                rfpEntity.RFP_Prompt,
-                request.Budget ?? "Not Specified",
-                request.Duration ?? "Not Specified",
-                request.Resource ?? "Not Specified", // Total number of headcount resources
-                request.AdditionalPrompt
+                rfpEntity.RFP_Prompt
+                //request.Budget ?? "Not Specified",
+                //request.Duration ?? "Not Specified",
+                //request.Resource ?? "Not Specified", // Total number of headcount resources
+                //request.AdditionalPrompt
             );
 
             // STEP 4: In-Memory Stream URL Configuration (Bypasses Blob storage dependencies)

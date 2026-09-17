@@ -23,17 +23,14 @@ namespace ContractPulseAI.API.Controllers
         /// using the original requirements, proposed RFP text, and master templates.
         /// </summary>
         [HttpPost("SOW_Generation")]
-        public async Task<IActionResult> GenerateSowFromRfp([FromBody] SowGenerationRequestDto request)
+        public async Task<IActionResult> GenerateSowFromRfp(int id)
         {
-            if (request == null || request.RfpId <= 0)
-            {
-                return BadRequest("A valid RFP ID must be provided.");
-            }
+            
 
             try
             {
                 // Executes the full pipeline: Azure AI Search -> Azure OpenAI -> OpenXML docx -> SQL Update
-                ClientRfpDto trackingResult = await _sowService.GenerateSowFromRfpAsync(request);
+                ClientRfpDto trackingResult = await _sowService.GenerateSowFromRfpAsync(id);
 
                 return Ok(trackingResult);
             }
